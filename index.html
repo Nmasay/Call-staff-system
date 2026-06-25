@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIカメラ連動 接客呼び出しシステム (プロトタイプ)</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Google Fontsの導入 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- アプリヘッダー -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-area">
+        <span class="pulse-dot idle" id="system-status-dot"></span>
+        <h1>AIカメラ連動 接客呼び出しシステム</h1>
+        <span class="badge" id="system-mode-badge">シミュレーション</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-start-system" class="btn btn-primary">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          システム開始
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="app-container">
+    <!-- 左カラム: カメラモニター & 管理者設定パネル -->
+    <div class="main-content-column">
+      <!-- AIカメラモニター -->
+      <section class="panel camera-panel">
+        <div class="panel-header">
+          <h2>AIカメラモニター</h2>
+          <div class="panel-actions">
+            <label class="switch-container">
+              <input type="checkbox" id="chk-dummy-video" checked>
+              <span class="switch-label">ダミー映像モード</span>
+            </label>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="video-wrapper">
+            <!-- カメラ映像 / ダミー描画用の要素 -->
+            <video id="webcam" autoplay playsinline muted class="video-feed hidden"></video>
+            <canvas id="dummy-canvas" width="640" height="480" class="video-feed"></canvas>
+            
+            <!-- ROI（関心領域）を設定するための透過オーバーレイ -->
+            <div id="roi-container" class="roi-overlay">
+              <!-- ROI枠はJavaScriptから動的に生成されます -->
+            </div>
+          </div>
+          
+          <div class="camera-info">
+            <p class="info-text">※ 枠をドラッグして移動、右下のマークをドラッグしてサイズ調整が可能です。</p>
+            <div class="roi-status-grid" id="roi-status-container">
+              <!-- 各ROIの現在の輝度や検知ステータスがここに表示されます -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 管理者設定パネル -->
+      <section class="panel admin-panel">
+        <div class="panel-header">
+          <h2>管理者設定パネル</h2>
+        </div>
+        <div class="panel-body">
+          <!-- 輝度検知の設定 -->
+          <div class="settings-group">
+            <h3>検知感度設定</h3>
+            <div class="control-row">
+              <label for="range-threshold">輝度閾値 (0-255)</label>
+              <div class="slider-val-container">
+                <input type="range" id="range-threshold" min="0" max="255" value="180">
+                <span class="val-display" id="val-threshold">180</span>
+              </div>
+            </div>
+            <div class="control-row">
+              <label for="range-ratio">判定面積割合 (%)</label>
+              <div class="slider-val-container">
+                <input type="range" id="range-ratio" min="1" max="100" value="15">
+                <span class="val-display" id="val-ratio">15%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- スタッフ設定 -->
+          <div class="settings-group">
+            <div class="section-title-btn">
+              <h3>本日の出勤スタッフ一覧</h3>
+              <button id="btn-add-staff" class="btn btn-sm btn-secondary">スタッフ追加</button>
+            </div>
+            
+            <!-- アクティブグループ切り替えボタン -->
+            <div class="group-switcher-container">
+              <span class="switcher-label">呼び出し対象:</span>
+              <div class="btn-group" id="group-switcher">
+                <button class="btn-toggle active" data-group="A-early">A早番</button>
+                <button class="btn-toggle" data-group="A-late">A遅番</button>
+                <button class="btn-toggle" data-group="B-early">B早番</button>
+                <button class="btn-toggle" data-group="B-late">B遅番</button>
+              </div>
+            </div>
+
+            <!-- A/B 2列のスタッフテーブル -->
+            <div class="staff-groups-container">
+              <!-- Aグループ -->
+              <div class="staff-group-column" id="column-group-A">
+                <h4 class="group-title">Aグループ</h4>
+                
+                <!-- A早番 -->
+                <div class="staff-subgroup-wrapper" id="wrapper-A-early">
+                  <h5 class="subgroup-title">☀️ 早番</h5>
+                  <div class="table-wrapper">
+                    <table class="staff-table" id="staff-table-A-early">
+                      <thead>
+                        <tr>
+                          <th style="width: 30px;"></th>
+                          <th>名前</th>
+                          <th>状態</th>
+                          <th>呼出</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="staff-list-body-A-early" class="staff-tbody" data-group="A-early">
+                        <!-- JSで動的生成 -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- A遅番 -->
+                <div class="staff-subgroup-wrapper" id="wrapper-A-late">
+                  <h5 class="subgroup-title">🌙 遅番</h5>
+                  <div class="table-wrapper">
+                    <table class="staff-table" id="staff-table-A-late">
+                      <thead>
+                        <tr>
+                          <th style="width: 30px;"></th>
+                          <th>名前</th>
+                          <th>状態</th>
+                          <th>呼出</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="staff-list-body-A-late" class="staff-tbody" data-group="A-late">
+                        <!-- JSで動的生成 -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bグループ -->
+              <div class="staff-group-column" id="column-group-B">
+                <h4 class="group-title">Bグループ</h4>
+                
+                <!-- B早番 -->
+                <div class="staff-subgroup-wrapper" id="wrapper-B-early">
+                  <h5 class="subgroup-title">☀️ 早番</h5>
+                  <div class="table-wrapper">
+                    <table class="staff-table" id="staff-table-B-early">
+                      <thead>
+                        <tr>
+                          <th style="width: 30px;"></th>
+                          <th>名前</th>
+                          <th>状態</th>
+                          <th>呼出</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="staff-list-body-B-early" class="staff-tbody" data-group="B-early">
+                        <!-- JSで動的生成 -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- B遅番 -->
+                <div class="staff-subgroup-wrapper" id="wrapper-B-late">
+                  <h5 class="subgroup-title">🌙 遅番</h5>
+                  <div class="table-wrapper">
+                    <table class="staff-table" id="staff-table-B-late">
+                      <thead>
+                        <tr>
+                          <th style="width: 30px;"></th>
+                          <th>名前</th>
+                          <th>状態</th>
+                          <th>呼出</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="staff-list-body-B-late" class="staff-tbody" data-group="B-late">
+                        <!-- JSで動的生成 -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 右カラム: 従業員スマホのみ -->
+    <div class="sidebar">
+      <!-- 従業員スマホシミュレータ -->
+      <section class="panel phone-panel">
+        <div class="panel-header">
+          <h2>従業員スマホ（モック）</h2>
+        </div>
+        <div class="panel-body flex-center">
+          <div class="phone-mock" id="phone-mock-device">
+            <!-- スマホ画面上部のインジケータ -->
+            <div class="phone-bar">
+              <span class="phone-time">12:00</span>
+              <div class="phone-icons">
+                <span>📶</span>
+                <span>🔋 85%</span>
+              </div>
+            </div>
+            
+            <div class="phone-screen" id="phone-screen-content">
+              <!-- 通常待機画面 -->
+              <div class="screen-state active" id="screen-idle">
+                <div class="idle-content">
+                  <div class="phone-bell-icon">🔔</div>
+                  <p class="status-msg">新規の呼び出しはありません</p>
+                  <p class="sub-msg">待機中...</p>
+                </div>
+              </div>
+
+              <!-- 呼び出し通知画面 -->
+              <div class="screen-state" id="screen-incoming">
+                <div class="incoming-header">
+                  <div class="incoming-alert-icon animate-pulse">🚨</div>
+                  <h3>接客呼び出し</h3>
+                </div>
+                <div class="incoming-body">
+                  <div class="alert-info">
+                    <span class="alert-label">売場番号</span>
+                    <span class="alert-val" id="lbl-alert-roi">3番売場</span>
+                  </div>
+                  <div class="alert-info">
+                    <span class="alert-label">指名スタッフ</span>
+                    <span class="alert-val highlight" id="lbl-alert-staff">Aさん</span>
+                  </div>
+                  
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="pb-timeout"></div>
+                  </div>
+                  <p class="timeout-text">自動再割り当てまで <span id="lbl-timeout-sec">30</span> 秒</p>
+                </div>
+                <div class="incoming-actions">
+                  <button id="btn-accept" class="btn-phone btn-phone-accept">
+                    <span>🟢</span> 向かいます
+                  </button>
+                  <button id="btn-decline" class="btn-phone btn-phone-decline">
+                    <span>🔴</span> 動けません
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- スタッフ追加モーダル -->
+  <div class="modal-overlay hidden" id="modal-add-staff">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>出勤スタッフ追加</h3>
+        <button id="btn-close-modal" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="input-staff-name">名前</label>
+          <input type="text" id="input-staff-name" placeholder="例：鈴木さん" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="select-staff-status">初期ステータス</label>
+          <select id="select-staff-status" class="form-select">
+            <option value="出勤中">出勤中</option>
+            <option value="ストップ">ストップ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="select-staff-group">所属グループ</label>
+          <select id="select-staff-group" class="form-select">
+            <option value="A-early">Aグループ・早番</option>
+            <option value="A-late">Aグループ・遅番</option>
+            <option value="B-early">Bグループ・早番</option>
+            <option value="B-late">Bグループ・遅番</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-staff" class="btn btn-secondary">キャンセル</button>
+        <button id="btn-save-staff" class="btn btn-primary">追加する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 計算・解析用一時Canvas (非表示) -->
+  <canvas id="analysis-canvas" width="640" height="480" class="hidden"></canvas>
+
+  <script src="app.js"></script>
+</body>
+</html>
