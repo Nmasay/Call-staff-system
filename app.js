@@ -294,17 +294,48 @@ function checkRoiTransition(roi, isLit) {
 }
 
 // --- 音声合成 & スタッフ選定モジュール ---
+let globalAudioCtx = null;
+
+function unlockAudioContext() {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  if (!globalAudioCtx) {
+    globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (globalAudioCtx.state === 'suspended') {
+    globalAudioCtx.resume();
+  }
+  // 無音の短いオシレーターを再生して確実にアンロック
+  const osc = globalAudioCtx.createOscillator();
+  const gain = globalAudioCtx.createGain();
+  gain.gain.value = 0; // 無音
+  osc.connect(gain);
+  gain.connect(globalAudioCtx.destination);
+  osc.start(0);
+  osc.stop(globalAudioCtx.currentTime + 0.001);
+  
+  // SpeechSynthesis のアンロック
+  if ('speechSynthesis' in window) {
+    const msg = new SpeechSynthesisUtterance('');
+    msg.volume = 0;
+    window.speechSynthesis.speak(msg);
+  }
+}
+
 // 電子チャイム音（ピンポン）の再生関数
 function playChime() {
   if (!window.AudioContext && !window.webkitAudioContext) return;
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioCtx();
+    if (!globalAudioCtx) {
+      globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (globalAudioCtx.state === 'suspended') {
+      globalAudioCtx.resume();
+    }
     
     // 1音目: ミ (659.25Hz)
-    playTone(ctx, 659.25, 0, 0.4);
+    playTone(globalAudioCtx, 659.25, 0, 0.4);
     // 2音目: ド (523.25Hz)
-    playTone(ctx, 523.25, 0.3, 0.4);
+    playTone(globalAudioCtx, 523.25, 0.3, 0.4);
   } catch (e) {
     console.error('Chime playback error:', e);
   }
@@ -1067,6 +1098,7 @@ function buildLoginStaffDropdown() {
 }
 
 function handleStaffLogin() {
+  unlockAudioContext(); // 音声をアンロック
   const select = document.getElementById('select-login-staff');
   const groupSelect = document.getElementById('select-login-group');
   const idStr = select.value;
