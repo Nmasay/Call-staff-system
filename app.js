@@ -48,6 +48,7 @@ const state = {
   },
   currentCall: null, // { id(docId), roiId, staffId, timeLeft, intervalId }
   systemActive: false,
+  isPaused: false,
   isDummyMode: true,
   analysisIntervalId: null,
   activeUtterance: null, // GC対策のグローバル参照
@@ -236,7 +237,7 @@ function startAnalysis() {
 }
 
 function analyzeFrame() {
-  if (!state.systemActive) return;
+  if (!state.systemActive || state.isPaused) return;
   const canvas = document.getElementById('analysis-canvas');
   const ctx = canvas.getContext('2d');
   const source = state.isDummyMode ? document.getElementById('dummy-canvas') : document.getElementById('webcam');
@@ -461,9 +462,17 @@ function startCallCountdown() {
   const call = state.currentCall;
   const fill = document.getElementById('pb-timeout');
   const text = document.getElementById('lbl-timeout-sec');
-  fill.style.width = '100%';
-  text.innerText = '30';
+  
+  if (call.timeLeft === undefined) {
+    call.timeLeft = 30;
+  }
+  fill.style.width = `${(call.timeLeft / 30) * 100}%`;
+  text.innerText = call.timeLeft;
+  
+  if (call.intervalId) clearInterval(call.intervalId);
+
   call.intervalId = setInterval(() => {
+    if (state.isPaused) return;
     call.timeLeft--;
     text.innerText = call.timeLeft;
     fill.style.width = `${(call.timeLeft / 30) * 100}%`;
@@ -848,10 +857,13 @@ function saveNewStaff() {
 
 function startSystem() {
   const btn = document.getElementById('btn-start-system');
+  const pauseBtn = document.getElementById('btn-pause-system');
   const statusDot = document.getElementById('system-status-dot');
   
   if (state.systemActive) {
     state.systemActive = false;
+    state.isPaused = false;
+    if (pauseBtn) pauseBtn.classList.add('hidden');
     btn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> システム開始`;
     btn.className = 'btn btn-primary';
     statusDot.className = 'pulse-dot idle';
@@ -882,11 +894,32 @@ function startSystem() {
     });
   } else {
     state.systemActive = true;
+    state.isPaused = false;
+    if (pauseBtn) {
+      pauseBtn.classList.remove('hidden');
+      pauseBtn.innerHTML = '<span style="font-size:1.1rem; line-height:1;">⏸</span> 一時停止';
+      pauseBtn.className = 'btn btn-secondary';
+    }
     btn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> システム停止`;
     btn.className = 'btn btn-secondary';
     statusDot.className = 'pulse-dot running';
     speak('システムを開始しました。');
     startAnalysis();
+  }
+}
+
+function togglePauseSystem() {
+  if (!state.systemActive) return;
+  state.isPaused = !state.isPaused;
+  const btn = document.getElementById('btn-pause-system');
+  if (!btn) return;
+  
+  if (state.isPaused) {
+    btn.innerHTML = '<span style="font-size:1.1rem; line-height:1;">▶️</span> 再開する';
+    btn.className = 'btn btn-primary';
+  } else {
+    btn.innerHTML = '<span style="font-size:1.1rem; line-height:1;">⏸</span> 一時停止';
+    btn.className = 'btn btn-secondary';
   }
 }
 
@@ -999,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   document.getElementById('btn-start-system').addEventListener('click', startSystem);
+  document.getElementById('btn-pause-system').addEventListener('click', togglePauseSystem);
   document.getElementById('btn-add-staff').addEventListener('click', openAddStaffModal);
   document.getElementById('btn-close-modal').addEventListener('click', closeAddStaffModal);
   document.getElementById('btn-cancel-staff').addEventListener('click', closeAddStaffModal);

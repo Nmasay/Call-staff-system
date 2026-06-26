@@ -1,0 +1,10 @@
+{
+  "name": "AIカメラ連動 接客呼び出しシステム",
+  "short_name": "接客呼出",
+  "start_url": "./?mode=staff",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait",
+  "gcm_sender_id": "103953800507"
+}
