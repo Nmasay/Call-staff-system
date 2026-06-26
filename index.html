@@ -5,12 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AIカメラ連動 接客呼び出しシステム (プロトタイプ)</title>
   <link rel="stylesheet" href="styles.css">
+  <!-- Firebase SDK (v8 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
   <!-- Google Fontsの導入 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- スタッフ専用全画面ログインビュー (mode=staff 時に使用) -->
+  <div id="staff-login-view" class="staff-mode-view hidden">
+    <div class="login-card">
+      <h2>スタッフ出勤登録</h2>
+      <p class="login-sub">名前と本日の時間帯を選択してログインしてください。</p>
+      
+      <div class="form-group">
+        <label for="select-login-staff">スタッフ名</label>
+        <select id="select-login-staff" class="form-select">
+          <!-- app.jsで動的に挿入されます -->
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="select-login-group">勤務区分</label>
+        <select id="select-login-group" class="form-select">
+          <option value="A-early">Aグループ・早番</option>
+          <option value="A-late">Aグループ・遅番</option>
+          <option value="B-early">Bグループ・早番</option>
+          <option value="B-late">Bグループ・遅番</option>
+        </select>
+      </div>
+
+      <button id="btn-staff-login" class="btn btn-primary btn-block">出勤登録 (ログイン)</button>
+    </div>
+  </div>
   <!-- アプリヘッダー -->
   <header class="app-header">
     <div class="header-container">
@@ -226,6 +258,10 @@
                 <span>📶</span>
                 <span>🔋 85%</span>
               </div>
+            </div>
+            <!-- ログインユーザー表示エリア -->
+            <div id="phone-user-bar" style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 0.75rem; text-align: center; padding: 0.25rem; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.05); display: none;">
+              <span id="lbl-logged-in-user"></span>
             </div>
             
             <div class="phone-screen" id="phone-screen-content">

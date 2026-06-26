@@ -3,6 +3,34 @@
  * コアロジック & UI制御
  */
 
+let db = null;
+let messaging = null;
+let activeCallsListener = null;
+
+// ローカルフォールバック用のダミーデータ
+const localDummyStaff = [
+  { id: 1, name: '佐藤さん', status: '出勤中', group: 'A-early', callCount: 0, order: 1 },
+  { id: 2, name: '鈴木さん', status: '出勤中', group: 'A-early', callCount: 0, order: 2 },
+  { id: 3, name: '高橋さん', status: '出勤中', group: 'A-early', callCount: 0, order: 3 },
+  { id: 4, name: '田中さん', status: 'ストップ', group: 'A-early', callCount: 0, order: 4 },
+  { id: 5, name: '渡辺さん', status: 'ストップ', group: 'A-early', callCount: 0, order: 5 },
+  { id: 6, name: '伊藤さん', status: '出勤中', group: 'A-late', callCount: 0, order: 6 },
+  { id: 7, name: '山本さん', status: '出勤中', group: 'A-late', callCount: 0, order: 7 },
+  { id: 8, name: '中村さん', status: 'ストップ', group: 'A-late', callCount: 0, order: 8 },
+  { id: 9, name: '小林さん', status: '出勤中', group: 'A-late', callCount: 0, order: 9 },
+  { id: 10, name: '加藤さん', status: 'ストップ', group: 'A-late', callCount: 0, order: 10 },
+  { id: 11, name: '吉田さん', status: '出勤中', group: 'B-early', callCount: 0, order: 11 },
+  { id: 12, name: '山田さん', status: '出勤中', group: 'B-early', callCount: 0, order: 12 },
+  { id: 13, name: '佐々木さん', status: 'ストップ', group: 'B-early', callCount: 0, order: 13 },
+  { id: 14, name: '山口さん', status: '出勤中', group: 'B-early', callCount: 0, order: 14 },
+  { id: 15, name: '松本さん', status: 'ストップ', group: 'B-early', callCount: 0, order: 15 },
+  { id: 16, name: '井上さん', status: '出勤中', group: 'B-late', callCount: 0, order: 16 },
+  { id: 17, name: '木村さん', status: '出勤中', group: 'B-late', callCount: 0, order: 17 },
+  { id: 18, name: '林さん', status: 'ストップ', group: 'B-late', callCount: 0, order: 18 },
+  { id: 19, name: '斎藤さん', status: '出勤中', group: 'B-late', callCount: 0, order: 19 },
+  { id: 20, name: '清水さん', status: 'ストップ', group: 'B-late', callCount: 0, order: 20 }
+];
+
 // アプリケーションのグローバル状態
 const state = {
   rois: [
@@ -12,45 +40,21 @@ const state = {
     { id: 4, x: 62, y: 35, w: 14, h: 30, active: false, detected: false, brightness: 0, pixelRatio: 0 },
     { id: 5, x: 81, y: 35, w: 14, h: 30, active: false, detected: false, brightness: 0, pixelRatio: 0 }
   ],
-  staff: [
-    // Aグループ・早番
-    { id: 1, name: '佐藤さん', status: '出勤中', group: 'A-early', callCount: 0 },
-    { id: 2, name: '鈴木さん', status: '出勤中', group: 'A-early', callCount: 0 },
-    { id: 3, name: '高橋さん', status: '出勤中', group: 'A-early', callCount: 0 },
-    { id: 4, name: '田中さん', status: 'ストップ', group: 'A-early', callCount: 0 },
-    { id: 5, name: '渡辺さん', status: 'ストップ', group: 'A-early', callCount: 0 },
-    // Aグループ・遅番
-    { id: 6, name: '伊藤さん', status: '出勤中', group: 'A-late', callCount: 0 },
-    { id: 7, name: '山本さん', status: '出勤中', group: 'A-late', callCount: 0 },
-    { id: 8, name: '中村さん', status: 'ストップ', group: 'A-late', callCount: 0 },
-    { id: 9, name: '小林さん', status: '出勤中', group: 'A-late', callCount: 0 },
-    { id: 10, name: '加藤さん', status: 'ストップ', group: 'A-late', callCount: 0 },
-    // Bグループ・早番
-    { id: 11, name: '吉田さん', status: '出勤中', group: 'B-early', callCount: 0 },
-    { id: 12, name: '山田さん', status: '出勤中', group: 'B-early', callCount: 0 },
-    { id: 13, name: '佐々木さん', status: 'ストップ', group: 'B-early', callCount: 0 },
-    { id: 14, name: '山口さん', status: '出勤中', group: 'B-early', callCount: 0 },
-    { id: 15, name: '松本さん', status: 'ストップ', group: 'B-early', callCount: 0 },
-    // Bグループ・遅番
-    { id: 16, name: '井上さん', status: '出勤中', group: 'B-late', callCount: 0 },
-    { id: 17, name: '木村さん', status: '出勤中', group: 'B-late', callCount: 0 },
-    { id: 18, name: '林さん', status: 'ストップ', group: 'B-late', callCount: 0 },
-    { id: 19, name: '斎藤さん', status: '出勤中', group: 'B-late', callCount: 0 },
-    { id: 20, name: '清水さん', status: 'ストップ', group: 'B-late', callCount: 0 }
-  ],
+  staff: [], // Firestoreから同期
   settings: {
     threshold: 180,
     ratioThreshold: 15, // %
     analysisInterval: 300 // ms
   },
-  currentCall: null, // { roiId, staffId, timeoutId, timeLeft, intervalId }
+  currentCall: null, // { id(docId), roiId, staffId, timeLeft, intervalId }
   systemActive: false,
   isDummyMode: true,
   analysisIntervalId: null,
   activeUtterance: null, // GC対策のグローバル参照
   lastStaffId: null, // ラウンドロビン（順番）選定用の前回指名ID
   lastCallResolvedTime: 0, // 前回の呼び出し完了時間（ダミークールダウン用）
-  activeGroup: 'A-early' // アクティブな呼び出しグループ
+  activeGroup: 'A-early', // アクティブな呼び出しグループ
+  currentStaffId: null // スマホログイン中のスタッフID
 };
 
 // --- ダミー映像シミュレーターモジュール ---
@@ -283,6 +287,8 @@ function checkRoiTransition(roi, isLit) {
     handleRoiTriggered(roi.id);
   } else if (!isLit && roi.detected) {
     roi.detected = false;
+    const box = document.querySelector(`.roi-box[data-id="${roi.id}"]`);
+    if (box) box.classList.remove('detected');
   }
 }
 
@@ -415,34 +421,48 @@ function handleRoiTriggered(roiId) {
 }
 
 function triggerCallForStaff(roiId, staff) {
-  state.currentCall = {
-    roiId: roiId,
-    staffId: staff.id,
-    timeLeft: 30,
-    intervalId: null
-  };
-  
-  // 音声の前に電子チャイム音を再生
+  if (db) {
+    db.collection('calls').add({
+      roiId: roiId,
+      staffId: String(staff.id),
+      staffName: staff.name,
+      active: true,
+      status: 'pending',
+      timeLeft: 30,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(docRef => {
+      state.currentCall = { id: docRef.id, roiId: roiId, staffId: staff.id, timeLeft: 30, intervalId: null };
+      monitorCurrentCallDoc(docRef.id);
+      playChime();
+      speakCallAnnouncement(staff.name, roiId);
+      startCallCountdown();
+    }).catch(err => console.error('Failed to trigger call in Firestore:', err));
+  } else {
+    triggerCallForStaffLocal(roiId, staff);
+  }
+}
+
+function triggerCallForStaffLocal(roiId, staff) {
+  state.currentCall = { roiId: roiId, staffId: staff.id, timeLeft: 30, intervalId: null };
   playChime();
-  
-  const rawName = staff.name.endsWith('さん') ? staff.name.slice(0, -2) : staff.name;
+  speakCallAnnouncement(staff.name, roiId);
+  showIncomingCallUI(roiId, staff.name);
+  document.getElementById('phone-mock-device').classList.add('vibrate');
+  startCallCountdown();
+}
+
+function speakCallAnnouncement(staffName, roiId) {
+  const rawName = staffName.endsWith('さん') ? staffName.slice(0, -2) : staffName;
   const msg = `業務連絡です。 ${rawName} さん、 ${roiId}番 売り場の、 接客対応を、 お願いします。`;
   speak(`${msg} ${msg}`);
-  showIncomingCallUI(roiId, staff.name);
-  
-  const phone = document.getElementById('phone-mock-device');
-  phone.classList.add('vibrate');
-  startCallCountdown();
 }
 
 function startCallCountdown() {
   const call = state.currentCall;
   const fill = document.getElementById('pb-timeout');
   const text = document.getElementById('lbl-timeout-sec');
-  
   fill.style.width = '100%';
   text.innerText = '30';
-  
   call.intervalId = setInterval(() => {
     call.timeLeft--;
     text.innerText = call.timeLeft;
@@ -453,10 +473,65 @@ function startCallCountdown() {
   }, 1000);
 }
 
+let currentCallDocListener = null;
+
+function monitorCurrentCallDoc(docId) {
+  if (currentCallDocListener) currentCallDocListener();
+  currentCallDocListener = db.collection('calls').doc(docId)
+    .onSnapshot(doc => {
+      if (!doc.exists) return;
+      const data = doc.data();
+      if (!data.active) {
+        if (currentCallDocListener) currentCallDocListener();
+        return;
+      }
+      handleCallDocumentChange(data, docId);
+    }, err => console.error('Call monitoring failed:', err));
+}
+
+function handleCallDocumentChange(data, docId) {
+  if (data.status === 'accepted') {
+    if (currentCallDocListener) currentCallDocListener();
+    const displayName = data.staffName.endsWith('さん') ? data.staffName : `${data.staffName}さん`;
+    speak(`了解しました。${displayName}が対応します。`, true);
+    db.collection('calls').doc(docId).update({ active: false, status: 'resolved' })
+      .then(() => {
+        incrementCallCount(data.staffId);
+        resetCallState();
+      })
+      .catch(err => console.error('Failed to resolve call doc:', err));
+  } else if (data.status === 'declined') {
+    if (currentCallDocListener) currentCallDocListener();
+    db.collection('calls').doc(docId).update({ active: false })
+      .then(() => declineCurrentCall())
+      .catch(err => console.error('Failed to deactivate declined call doc:', err));
+  }
+}
+
+function incrementCallCount(staffId) {
+  db.collection('staff').doc(String(staffId)).get()
+    .then(doc => {
+      if (doc.exists) {
+        const newCount = (doc.data().callCount || 0) + 1;
+        db.collection('staff').doc(String(staffId)).update({ callCount: newCount });
+      }
+    })
+    .catch(err => console.error('Failed to increment callCount:', err));
+}
+
 function acceptCurrentCall() {
   if (!state.currentCall) return;
   clearInterval(state.currentCall.intervalId);
-  
+  if (db && state.currentCall.id && state.currentStaffId) {
+    db.collection('calls').doc(state.currentCall.id).update({ status: 'accepted' })
+      .catch(err => console.error('Failed to accept call:', err));
+    resetCallState();
+  } else {
+    acceptCurrentCallLocal();
+  }
+}
+
+function acceptCurrentCallLocal() {
   const staff = state.staff.find(s => s.id === state.currentCall.staffId);
   if (staff) {
     staff.callCount++;
@@ -470,13 +545,27 @@ function acceptCurrentCall() {
 function declineCurrentCall() {
   if (!state.currentCall) return;
   clearInterval(state.currentCall.intervalId);
-  
+  if (db && state.currentCall.id) {
+    if (state.currentStaffId) {
+      db.collection('calls').doc(state.currentCall.id).update({ status: 'declined' })
+        .catch(err => console.error('Failed to decline call:', err));
+      resetCallState();
+    } else {
+      db.collection('calls').doc(state.currentCall.id).update({ active: false, status: 'timeout' })
+        .then(() => declineCurrentCallLocal())
+        .catch(err => {
+          console.error('Failed to deactivate timeout call:', err);
+          declineCurrentCallLocal();
+        });
+    }
+  } else {
+    declineCurrentCallLocal();
+  }
+}
+
+function declineCurrentCallLocal() {
   const prevRoiId = state.currentCall.roiId;
-  
-  // selectBestStaff() は自動的に lastStaffId (現在の指名ID) の次から探索を開始するため、
-  // 面倒なステータスの一時書き換えなしで、次の「出勤中」メンバーを安全に選択できます。
   const nextStaff = selectBestStaff();
-  
   if (nextStaff) {
     triggerCallForStaff(prevRoiId, nextStaff);
   } else {
@@ -487,12 +576,16 @@ function declineCurrentCall() {
 }
 
 function resetCallState() {
+  if (state.currentCall && state.currentCall.intervalId) {
+    clearInterval(state.currentCall.intervalId);
+  }
+  if (currentCallDocListener) {
+    currentCallDocListener();
+    currentCallDocListener = null;
+  }
   state.currentCall = null;
-  state.lastCallResolvedTime = Date.now(); // 呼び出しが解消された時間を記録（クールダウン開始）
+  state.lastCallResolvedTime = Date.now();
   resetPhoneToIdle();
-  document.querySelectorAll('.roi-box').forEach(box => {
-    box.classList.remove('detected');
-  });
 }
 
 // --- UI連動モジュール ---
@@ -591,12 +684,23 @@ function renderStaffGroup(group) {
 
 function setupStaffRowEvents(tr, staffMember) {
   tr.querySelector('.select-status').addEventListener('change', (e) => {
-    staffMember.status = e.target.value;
-    tr.classList.toggle('status-stopped', staffMember.status === 'ストップ');
+    const newStatus = e.target.value;
+    if (db) {
+      db.collection('staff').doc(String(staffMember.id)).update({ status: newStatus })
+        .catch(err => console.error('Failed to update status:', err));
+    } else {
+      staffMember.status = newStatus;
+      tr.classList.toggle('status-stopped', newStatus === 'ストップ');
+    }
   });
   tr.querySelector('.btn-delete-staff').addEventListener('click', () => {
-    state.staff = state.staff.filter(s => s.id !== staffMember.id);
-    renderStaffList();
+    if (db) {
+      db.collection('staff').doc(String(staffMember.id)).delete()
+        .catch(err => console.error('Failed to delete staff:', err));
+    } else {
+      state.staff = state.staff.filter(s => s.id !== staffMember.id);
+      renderStaffList();
+    }
   });
 }
 
@@ -647,17 +751,36 @@ function setupStaffRowDragAndDrop(tr, staffMember) {
 }
 
 function updateStaffOrderFromDOM() {
-  const newStaffList = [];
+  const updates = [];
+  let index = 1;
   ['A-early', 'A-late', 'B-early', 'B-late'].forEach(group => {
     const rows = document.querySelectorAll(`#staff-list-body-${group} tr`);
     rows.forEach(row => {
-      const id = parseInt(row.getAttribute('data-id'));
-      const staffMember = state.staff.find(s => s.id === id);
-      if (staffMember) {
-        staffMember.group = group;
-        newStaffList.push(staffMember);
-      }
+      const idStr = row.getAttribute('data-id');
+      updates.push({ id: idStr, group: group, order: index++ });
     });
+  });
+  if (db) {
+    const batch = db.batch();
+    updates.forEach(up => {
+      const ref = db.collection('staff').doc(up.id);
+      batch.update(ref, { group: up.group, order: up.order });
+    });
+    batch.commit().catch(err => console.error('Batch order update failed:', err));
+  } else {
+    applyLocalOrderUpdates(updates);
+  }
+}
+
+function applyLocalOrderUpdates(updates) {
+  const newStaffList = [];
+  updates.forEach(up => {
+    const s = state.staff.find(x => x.id == up.id);
+    if (s) {
+      s.group = up.group;
+      s.order = up.order;
+      newStaffList.push(s);
+    }
   });
   state.staff = newStaffList;
 }
@@ -694,25 +817,33 @@ function saveNewStaff() {
   const nameInput = document.getElementById('input-staff-name');
   const statusSelect = document.getElementById('select-staff-status');
   const groupSelect = document.getElementById('select-staff-group');
-  
   const name = nameInput.value.trim();
   if (!name) {
     alert('名前を入力してください');
     return;
   }
-  
-  const newId = state.staff.length > 0 ? Math.max(...state.staff.map(s => s.id)) + 1 : 1;
-  state.staff.push({
-    id: newId,
+  const nextOrder = state.staff.length > 0 ? Math.max(...state.staff.map(s => s.order || 0)) + 1 : 1;
+  const newStaff = {
     name: name,
     status: statusSelect.value,
     group: groupSelect.value,
-    callCount: 0
-  });
-  
-  nameInput.value = '';
-  renderStaffList();
-  closeAddStaffModal();
+    callCount: 0,
+    order: nextOrder
+  };
+  if (db) {
+    db.collection('staff').add(newStaff)
+      .then(() => {
+        nameInput.value = '';
+        closeAddStaffModal();
+      })
+      .catch(err => alert('スタッフの追加に失敗しました: ' + err.message));
+  } else {
+    const newId = state.staff.length > 0 ? Math.max(...state.staff.map(s => s.id)) + 1 : 1;
+    state.staff.push({ id: newId, ...newStaff });
+    nameInput.value = '';
+    renderStaffList();
+    closeAddStaffModal();
+  }
 }
 
 function startSystem() {
@@ -791,15 +922,72 @@ function initVideoToggle() {
   });
 }
 
+// Firebase非同期初期化
+async function initFirebase() {
+  try {
+    const res = await fetch('firebase-config.json');
+    const config = await res.json();
+    if (typeof firebase !== 'undefined') {
+      firebase.initializeApp(config);
+      db = firebase.firestore();
+      state.vapidKey = config.vapidKey;
+      await initServiceWorker();
+      initFirestoreListeners();
+    } else {
+      setupLocalFallback();
+    }
+  } catch (err) {
+    console.warn('Firebase initialization failed, fallback to local data:', err);
+    setupLocalFallback();
+  }
+}
+
+// Service Worker & Messagingの初期化
+async function initServiceWorker() {
+  if ('serviceWorker' in navigator && typeof firebase.messaging !== 'undefined') {
+    try {
+      const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+      messaging = firebase.messaging();
+      messaging.useServiceWorker(reg);
+    } catch (swErr) {
+      console.warn('FCM ServiceWorker registration failed:', swErr);
+    }
+  }
+}
+
+// Firestoreのリアルタイム監視
+function initFirestoreListeners() {
+  if (!db) return;
+  db.collection('staff').orderBy('order').onSnapshot(snapshot => {
+    state.staff = [];
+    snapshot.forEach(doc => {
+      state.staff.push({ id: doc.id, ...doc.data() });
+    });
+    renderStaffList();
+    buildLoginStaffDropdown();
+  }, err => {
+    console.error('Firestore staff snapshot error:', err);
+    setupLocalFallback();
+  });
+}
+
+// ローカルフォールバック（オフライン動作）
+function setupLocalFallback() {
+  state.staff = JSON.parse(JSON.stringify(localDummyStaff));
+  renderStaffList();
+  buildLoginStaffDropdown();
+}
+
 // --- 初期化 ---
 document.addEventListener('DOMContentLoaded', () => {
   initRoiStatusCards();
   renderROIs();
-  renderStaffList();
   initSliders();
   initVideoToggle();
   initGroupSwitcher();
   initTableBodyDragAndDrop();
+  initFirebase();
+  initStaffMode();
   drawDummyStoreVideo();
   
   // 音声リストの初期ロードを促す（ウォームアップ）
@@ -818,3 +1006,127 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-accept').addEventListener('click', acceptCurrentCall);
   document.getElementById('btn-decline').addEventListener('click', declineCurrentCall);
 });
+
+// --- スタッフログイン（mode=staff）モジュール ---
+function initStaffMode() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('mode') !== 'staff') return;
+  
+  document.body.classList.add('mode-staff');
+  const loginView = document.getElementById('staff-login-view');
+  if (loginView) loginView.classList.remove('hidden');
+  
+  buildLoginStaffDropdown();
+  document.getElementById('btn-staff-login').addEventListener('click', handleStaffLogin);
+}
+
+function buildLoginStaffDropdown() {
+  const select = document.getElementById('select-login-staff');
+  if (!select) return;
+  select.innerHTML = '';
+  state.staff.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.innerText = s.name;
+    select.appendChild(opt);
+  });
+}
+
+function handleStaffLogin() {
+  const select = document.getElementById('select-login-staff');
+  const groupSelect = document.getElementById('select-login-group');
+  const idStr = select.value;
+  state.currentStaffId = idStr;
+
+  const staffName = select.options[select.selectedIndex].text;
+  const userBar = document.getElementById('phone-user-bar');
+  const userLbl = document.getElementById('lbl-logged-in-user');
+  if (userBar && userLbl) {
+    userLbl.textContent = '👤 ' + staffName;
+    userBar.style.display = 'block';
+  }
+
+  if (db) {
+    db.collection('staff').doc(idStr).update({
+      status: '出勤中',
+      group: groupSelect.value
+    }).then(() => {
+      requestFCMToken(idStr);
+      startStaffCallListener(idStr);
+    }).catch(err => console.error('Login update failed:', err));
+  } else {
+    handleLocalStaffLogin(idStr, groupSelect.value);
+  }
+  document.getElementById('staff-login-view').classList.add('hidden');
+}
+
+function handleLocalStaffLogin(idStr, groupVal) {
+  const s = state.staff.find(x => x.id == idStr);
+  if (s) {
+    s.status = '出勤中';
+    s.group = groupVal;
+    state.lastStaffId = null;
+  }
+  renderStaffList();
+}
+
+function requestFCMToken(staffId) {
+  if (!messaging || !state.vapidKey) return;
+  Notification.requestPermission()
+    .then(permission => {
+      if (permission === 'granted') {
+        return messaging.getToken({ vapidKey: state.vapidKey });
+      }
+    })
+    .then(token => {
+      if (token) {
+        db.collection('staff').doc(String(staffId)).update({ fcmToken: token });
+      }
+    })
+    .catch(err => console.warn('FCM token request failed:', err));
+}
+
+function startStaffCallListener(staffId) {
+  if (!db) return;
+  if (activeCallsListener) activeCallsListener();
+  const loginTimeMillis = Date.now();
+  activeCallsListener = db.collection('calls')
+    .where('active', '==', true)
+    .where('staffId', '==', String(staffId))
+    .onSnapshot(snapshot => {
+      const validDocs = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        const ts = data.timestamp ? data.timestamp.toDate().getTime() : Date.now();
+        return ts >= (loginTimeMillis - 5000) && data.status === 'pending';
+      });
+      if (validDocs.length === 0) {
+        resetPhoneToIdle();
+        if (state.currentCall) {
+          clearInterval(state.currentCall.intervalId);
+          state.currentCall = null;
+        }
+      } else {
+        handleIncomingCallSnapshot(validDocs[0], staffId);
+      }
+    }, err => console.error('Calls listener error:', err));
+}
+
+function handleIncomingCallSnapshot(doc, staffId) {
+  const callData = doc.data();
+  // 既存の呼び出しが継続している場合は、UIやタイマーをリセットしない
+  if (state.currentCall && state.currentCall.id === doc.id) {
+    return;
+  }
+  if (state.currentCall && state.currentCall.intervalId) {
+    clearInterval(state.currentCall.intervalId);
+  }
+  state.currentCall = {
+    id: doc.id,
+    roiId: callData.roiId,
+    staffId: staffId,
+    timeLeft: callData.timeLeft || 30,
+    intervalId: null
+  };
+  showIncomingCallUI(callData.roiId, 'あなた');
+  startCallCountdown();
+}
