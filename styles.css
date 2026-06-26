@@ -1218,3 +1218,13 @@ body.mode-staff .incoming-body {
   flex: none;
   padding: 1.5rem 1rem;
 }
+
+/* スマホ実機でのモック要素（ダミーの枠やステータスバー）を非表示にする */
+body.mode-staff .phone-panel .panel-header,
+body.mode-staff .phone-bar {
+  display: none !important;
+}
+
+body.mode-staff .phone-screen {
+  border-radius: 0 !important;
+}
