@@ -1161,6 +1161,21 @@ function handleIncomingCallSnapshot(doc, staffId) {
     timeLeft: callData.timeLeft || 30,
     intervalId: null
   };
+
+  // --- 通知・アテンション処理の追加 ---
+  playChime(); // ピンポン音の再生（※事前に画面タップが必要）
+  if (navigator.vibrate) {
+    navigator.vibrate([200, 100, 200, 100, 200]); // スマホ実機のバイブ（Android用）
+  }
+  document.getElementById('phone-mock-device').classList.add('vibrate'); // 画面要素の振動エフェクト
+  
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification("🚨 接客呼び出し", {
+      body: `${callData.roiId}番売場にお客様がお待ちです。`
+    });
+  }
+  // ------------------------------------
+
   showIncomingCallUI(callData.roiId, 'あなた');
   startCallCountdown();
 }
